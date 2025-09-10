@@ -1,0 +1,3 @@
+# https://dl-cdn.alpinelinux.org/alpine/v3.18/main
+# https://dl-cdn.alpinelinux.org/alpine/v3.18/community
+http://172.17.0.1:8082/alpine/v3.18/main/
