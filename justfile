@@ -8,13 +8,13 @@ serve-alpine:
     python3 -m http.server -d apk/ 8082
 
 build-app:
-    {{sudo}} docker buildx build --platform="linux/amd64" -f Dockerfile.nitro -t build-app .
-    {{sudo}} docker rm -f build-app > /dev/null  2>&1 || true
-    {{sudo}} docker run --platform="linux/amd64" --name build-app -v /var/run/docker.sock:/var/run/docker.sock build-app
+    {{sudo}} docker buildx build --platform="linux/amd64" -f Dockerfile.nitro -t lockhost-ssh-build-app .
+    {{sudo}} docker rm -f lockhost-ssh-build-app > /dev/null  2>&1 || true
+    {{sudo}} docker run --platform="linux/amd64" --name lockhost-ssh-build-app -v /var/run/docker.sock:/var/run/docker.sock lockhost-ssh-build-app
     mkdir -p dist
-    {{sudo}} docker cp build-app:/workspace/app.eif ./dist/ || true
-    {{sudo}} docker cp build-app:/workspace/app.pcr ./dist/ || true
-    {{sudo}} docker rm -f build-app > /dev/null  2>&1 || true
+    {{sudo}} docker cp lockhost-ssh-build-app:/workspace/app.eif ./dist/ || true
+    {{sudo}} docker cp lockhost-ssh-build-app:/workspace/app.pcr ./dist/ || true
+    {{sudo}} docker rm -f lockhost-ssh-build-app > /dev/null  2>&1 || true
 
 build-app-vm:
     sudo multipass delete --purge myvm > /dev/null  2>&1 || true
@@ -49,26 +49,23 @@ build-app-vm:
 #############
 
 build-test-app:
-    {{sudo}} docker buildx build --platform="linux/amd64" --build-arg PROD=false -f Dockerfile.app -t test-app .
-
-make-test-net:
-    {{sudo}} docker network create lockhost-net > /dev/null 2>&1 || true
+    {{sudo}} docker buildx build --platform="linux/amd64" --build-arg PROD=false -f Dockerfile.app -t lockhost-ssh-test-app .
 
 make-test-fifos:
     mkfifo /tmp/read > /dev/null  2>&1 || true
     mkfifo /tmp/write > /dev/null  2>&1 || true
 
-run-test-host:
-    just make-test-net
-    just make-test-fifos
-    {{sudo}} docker run --rm -it --platform="linux/amd64" --name lockhost-host -v /tmp/read:/tmp/read -v /tmp/write:/tmp/write --network lockhost-net -p 2222:2222 lockhost-host 2222
 
-run-test-app:
-    just make-test-fifos
-    {{sudo}} docker run --rm -it --cap-add NET_ADMIN --platform="linux/amd64" -v /tmp/read:/tmp/write -v /tmp/write:/tmp/read test-app
+#########################
+## Allow update alpine ##
+#########################
 
-atsocat listen target port:
-    {{sudo}} docker run --rm -it --platform="linux/amd64" --entrypoint /runtime/atsocat.sh --network lockhost-net -p {{listen}}:{{listen}} lockhost-runtime {{listen}} {{target}} {{port}}
+proxy-alpine:
+    cd ../lock.host && just build-proxy-alpine
+    {{sudo}} docker run --rm -it -v ./apk:/root/apk -p 8080:8080 lockhost-proxy-alpine
+
+fetch-alpine:
+    {{sudo}} docker buildx build --platform="linux/amd64" -f apk/Dockerfile.fetch -t lockhost-fetch-alpine .
 
 
 ##########
@@ -76,8 +73,7 @@ atsocat listen target port:
 ##########
 
 run-host:
-    just make-test-net
-    sudo docker run --rm -it --platform="linux/amd64" --privileged --name lockhost-host -v /dev/vsock:/dev/vsock --network lockhost-net -p 2222:2222 --env-file .env -e PROD=true lockhost-host 2222
+    sudo docker run --rm -it --privileged --name lockhost-host -v /dev/vsock:/dev/vsock -p 2222:2222 --env-file .env -e PROD=true lockhost-host 2222
 
 run-app:
     sudo nitro-cli run-enclave --cpu-count 2 --memory 4096 --enclave-cid 16 --eif-path dist/app.eif
@@ -85,8 +81,16 @@ run-app:
 run-app-debug:
     sudo nitro-cli run-enclave --cpu-count 2 --memory 4096 --enclave-cid 16 --eif-path dist/app.eif --debug-mode
 
-nitro-logs enclave-id:
-    sudo nitro-cli console --enclave-id {{enclave-id}}
+atsocat listen target:
+    {{sudo}} docker run --rm -it --entrypoint /runtime/atsocat.sh -p {{listen}}:{{listen}} lockhost-host {{listen}} {{target}}
 
-nitro-rm enclave-id:
-    sudo nitro-cli terminate-enclave --enclave-id {{enclave-id}}
+nitro:
+    sudo nitro-cli describe-enclaves
+
+eid := "$(just nitro | jq -r '.[0].EnclaveID')"
+
+nitro-logs:
+    sudo nitro-cli console --enclave-id {{eid}}
+
+nitro-rm:
+    sudo nitro-cli terminate-enclave --enclave-id {{eid}}

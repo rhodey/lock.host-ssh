@@ -3,7 +3,7 @@ FROM lockhost-runtime
 
 # ssh
 COPY apk/repositories.serve /etc/apk/repositories
-RUN apk add --no-cache openssh-server=9.3_p2-r2
+RUN apk add --no-cache openssh-server
 
 # main
 WORKDIR /app
@@ -15,9 +15,10 @@ RUN rm -rf /root/.cache
 RUN rm -f /lib/apk/db/scripts.tar
 RUN rm -rf /var/cache/apk
 
-# nitro needs this
 ARG PROD=true
 ENV PROD=${PROD}
+
+# nitro needs this
 RUN if [ "$PROD" = "true" ]; then \
       chmod -R ug+w,o-rw /runtime && \
       chmod ug+w,o-rw /etc/apk/repositories /app/app.sh && \
@@ -27,5 +28,10 @@ RUN if [ "$PROD" = "true" ]; then \
 
 # nitro needs this
 RUN cd /app
+
+# for test attest docs
+RUN if [ "$PROD" = "false" ]; then \
+      bash -c /runtime/hash.sh; \
+    fi
 
 ENTRYPOINT ["/app/app.sh"]

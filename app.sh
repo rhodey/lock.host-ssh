@@ -21,10 +21,8 @@ fi
 # for test
 chown -f root /tmp/write || true
 
-# ssh
 ssh-keygen -A
 echo "root:root" | chpasswd
 
-# ssh
 cd /runtime
 node runtime.js 2222 /usr/sbin/sshd -o PermitRootLogin=yes -o PasswordAuthentication=yes -p 2223 -D

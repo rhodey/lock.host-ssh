@@ -1,0 +1,30 @@
+services:
+  ssh:
+    container_name: ssh
+    image: lockhost-ssh-test-app
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - /tmp/read:/tmp/write
+      - /tmp/write:/tmp/read
+
+  host:
+    container_name: host
+    image: lockhost-host
+    depends_on:
+      - ssh
+    volumes:
+      - /tmp/read:/tmp/read
+      - /tmp/write:/tmp/write
+    ports:
+      - "2222:2222"
+    command: ["2222"]
+
+  atsocat:
+    container_name: atsocat
+    image: lockhost-host
+    depends_on:
+      - host
+    ports:
+      - "2223:2223"
+    entrypoint: bash -c "sleep 2 && /runtime/atsocat.sh 2223 https://host:2222"
