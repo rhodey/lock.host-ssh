@@ -29,7 +29,7 @@ build-app-vm:
     sudo multipass start myvm
     sudo multipass exec myvm -- sudo apt install -y just
     sudo multipass exec myvm -- bash -c "curl -fsSL https://get.docker.com -o /tmp/docker.sh"
-    sudo multipass exec myvm -- sh /tmp/docker.sh
+    sudo multipass exec myvm -- VERSION=28.3.3 sh /tmp/docker.sh
     sudo multipass exec myvm -- bash -c "cp -r ~/base ~/basee"
     sudo multipass exec myvm -- bash -c "cp -r ~/app ~/appp"
     sudo multipass exec myvm -- bash -c "cd ~/basee && just serve-alpine" &
@@ -37,9 +37,7 @@ build-app-vm:
     sudo multipass exec myvm -- bash -c "cd ~/appp && just serve-alpine" &
     sudo multipass exec myvm -- bash -c "cd ~/appp && just build-app"
     mkdir -p dist
-    sudo multipass exec myvm -- sudo cp /home/ubuntu/appp/dist/app.eif /home/ubuntu/app/dist/
     sudo multipass exec myvm -- sudo cp /home/ubuntu/appp/dist/app.pcr /home/ubuntu/app/dist/
-    sudo multipass exec myvm -- sudo chmod 666 /home/ubuntu/app/dist/app.eif
     sudo multipass exec myvm -- sudo chmod 666 /home/ubuntu/app/dist/app.pcr
     sudo multipass delete --purge myvm
 
