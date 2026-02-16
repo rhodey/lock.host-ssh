@@ -9,7 +9,7 @@ serve-alpine:
 
 build-app:
     {{sudo}} docker buildx build --platform="linux/amd64" -f Dockerfile.nitro -t lockhost-ssh-build-app .
-    {{sudo}} docker rm -f lockhost-ssh-build-app > /dev/null  2>&1 || true
+    {{sudo}} docker rm -f lockhost-ssh-build-app > /dev/null 2>&1 || true
     {{sudo}} docker run --platform="linux/amd64" --name lockhost-ssh-build-app -v /var/run/docker.sock:/var/run/docker.sock lockhost-ssh-build-app
     mkdir -p dist
     {{sudo}} docker cp lockhost-ssh-build-app:/workspace/app.eif ./dist/ || true
@@ -46,12 +46,13 @@ build-app-vm:
 ## Testing ##
 #############
 
-build-test-app:
-    {{sudo}} docker buildx build --platform="linux/amd64" --build-arg PROD=false -f Dockerfile.app -t lockhost-ssh-test-app .
-
 make-test-fifos:
-    mkfifo /tmp/read > /dev/null  2>&1 || true
-    mkfifo /tmp/write > /dev/null  2>&1 || true
+    mkfifo /tmp/read > /dev/null 2>&1 || true
+    mkfifo /tmp/write > /dev/null 2>&1 || true
+
+build-test-app:
+    just make-test-fifos
+    {{sudo}} docker buildx build --platform="linux/amd64" --build-arg PROD=false -f Dockerfile.app -t lockhost-ssh-test-app .
 
 
 #########################
